@@ -1,16 +1,19 @@
 # Pokémon Card Tracker
 
-Track which cards you own across the Mega Evolution series (Perfect Order, Chaos Rising, Pitch Black), with images pulled from [TCGdex](https://tcgdex.dev/). Owned/needed status is stored in Supabase so it syncs across devices.
+Track which cards you own across the Mega Evolution series (Perfect Order, Chaos Rising, Pitch Black), with images pulled from [TCGdex](https://tcgdex.dev/). Owned/needed status is stored in a Neon Postgres database (via Vercel's Neon integration) so it syncs across devices.
 
 ## Setup
 
-1. **Create a Supabase project** at [supabase.com](https://supabase.com) (free tier).
-2. In the Supabase SQL editor, run the contents of [`supabase/schema.sql`](supabase/schema.sql).
-3. In Supabase project settings → API, copy the **Project URL** and **anon public key**.
-4. Copy `.env.local.example` to `.env.local` and fill in those two values:
+1. **Deploy this repo to Vercel** (push to GitHub, then [import it](https://vercel.com/new)).
+2. In the Vercel project, go to **Storage → Create Database → Neon** (or **Integrations → Neon**) to provision a Postgres database and automatically wire up the `DATABASE_URL` environment variable.
+3. Open the Neon database's SQL editor (linked from the Vercel Storage tab, or via [neon.tech](https://neon.tech)) and run the contents of [`db/schema.sql`](db/schema.sql).
+4. For local development, pull the env vars Vercel just set:
    ```bash
-   cp .env.local.example .env.local
+   npm install -g vercel   # if you don't have it
+   vercel link
+   vercel env pull .env.local
    ```
+   This writes `DATABASE_URL` into `.env.local` for you. (See `.env.local.example` for the expected format if you'd rather set it manually.)
 5. Install dependencies and run locally:
    ```bash
    npm install
@@ -20,7 +23,7 @@ Track which cards you own across the Mega Evolution series (Perfect Order, Chaos
 
 ## Deploying
 
-Push this repo to GitHub and import it in [Vercel](https://vercel.com/new). Add the same two environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in the Vercel project settings, then deploy.
+Once `DATABASE_URL` is set in the Vercel project (step 2 above), just push to your connected branch — Vercel builds and deploys automatically.
 
 On your phone, open the deployed URL and use "Add to Home Screen" for quick access.
 

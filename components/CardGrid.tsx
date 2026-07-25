@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { TcgdexCard } from "@/lib/tcgdex";
-import { setOwned } from "@/lib/owned";
+import { setCardOwned } from "@/app/actions";
 import CardTile from "./CardTile";
 
 type Filter = "all" | "owned" | "needed";
@@ -42,7 +42,7 @@ export default function CardGrid({
     setOwnedIds(next);
 
     try {
-      await setOwned(card.id, setId, !isOwned);
+      await setCardOwned(card.id, setId, !isOwned);
     } catch (err) {
       console.error("Failed to save owned status", err);
       setOwnedIds(ownedIds);
