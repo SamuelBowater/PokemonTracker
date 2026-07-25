@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TRACKED_SETS } from "@/lib/sets";
 import { getSet } from "@/lib/tcgdex";
-import { getOwnedCardIds } from "@/lib/owned";
+import { getOwnedVariantKeys } from "@/lib/owned";
 import CardGrid from "@/components/CardGrid";
 
 export const revalidate = 0;
@@ -15,9 +15,9 @@ export default async function SetPage({
   const meta = TRACKED_SETS.find((s) => s.id === params.setId);
   if (!meta) notFound();
 
-  const [set, ownedIds] = await Promise.all([
+  const [set, ownedKeys] = await Promise.all([
     getSet(params.setId),
-    getOwnedCardIds(params.setId),
+    getOwnedVariantKeys(params.setId),
   ]);
 
   return (
@@ -29,7 +29,7 @@ export default async function SetPage({
       <CardGrid
         setId={params.setId}
         cards={set.cards}
-        initialOwnedIds={Array.from(ownedIds)}
+        initialOwnedKeys={Array.from(ownedKeys)}
       />
     </main>
   );

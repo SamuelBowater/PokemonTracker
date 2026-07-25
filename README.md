@@ -1,6 +1,6 @@
 # Pokémon Card Tracker
 
-Track which cards you own across the Mega Evolution series (Perfect Order, Chaos Rising, Pitch Black), with images pulled from [TCGdex](https://tcgdex.dev/). Owned/needed status is stored in a Neon Postgres database (via Vercel's Neon integration) so it syncs across devices.
+Track which cards you own across the Mega Evolution series (Perfect Order, Chaos Rising, Pitch Black), with images pulled from [TCGdex](https://tcgdex.dev/). Built for mastersetting — each card's normal/reverse/holo/1st-edition variants are tracked individually. Owned/needed status is stored in a Neon Postgres database (via Vercel's Neon integration) so it syncs across devices.
 
 ## Setup
 
@@ -30,3 +30,7 @@ On your phone, open the deployed URL and use "Add to Home Screen" for quick acce
 ## Adding more sets
 
 Add an entry to `TRACKED_SETS` in [`lib/sets.ts`](lib/sets.ts) with the TCGdex set id (e.g. `me06`) and display name.
+
+## Upgrading an existing database for variant tracking
+
+If you set up the database before masterset (variant) tracking was added, run [`db/migrations/001_add_variants.sql`](db/migrations/001_add_variants.sql) once in the Neon SQL editor to add the `variant` column to `owned_cards`. Any cards already marked owned will carry over as their "normal" variant.

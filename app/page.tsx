@@ -1,23 +1,24 @@
 import Link from "next/link";
 import { TRACKED_SETS } from "@/lib/sets";
-import { getSet } from "@/lib/tcgdex";
-import { getOwnedCardIds } from "@/lib/owned";
+import { getSet, variantsOf } from "@/lib/tcgdex";
+import { getOwnedVariantKeys } from "@/lib/owned";
 
 export const revalidate = 0;
 
 export default async function HomePage() {
   const summaries = await Promise.all(
     TRACKED_SETS.map(async ({ id, name }) => {
-      const [set, owned] = await Promise.all([
+      const [set, ownedKeys] = await Promise.all([
         getSet(id),
-        getOwnedCardIds(id),
+        getOwnedVariantKeys(id),
       ]);
+      const total = set.cards.reduce((sum, card) => sum + variantsOf(card).length, 0);
       return {
         id,
         name,
         logo: set.logo,
-        total: set.cards.length,
-        owned: owned.size,
+        total,
+        owned: ownedKeys.size,
       };
     })
   );
@@ -54,7 +55,7 @@ export default async function HomePage() {
                 />
               </div>
               <div className="text-sm text-slate-400 mt-1">
-                {set.owned} / {set.total} owned ({pct}%)
+                {set.owned} / {set.total} variants owned ({pct}%)
               </div>
             </Link>
           );

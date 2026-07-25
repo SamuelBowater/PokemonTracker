@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TcgdexCard } from "@/lib/tcgdex";
-import { setCardOwned } from "@/app/actions";
+import { TcgdexCard, VariantKey, variantsOf } from "@/lib/tcgdex";
+import { ownedKey } from "@/lib/ownedKey";
+import { setVariantOwned } from "@/app/actions";
 import CardTile from "./CardTile";
 
 type Filter = "all" | "owned" | "needed";
@@ -10,42 +11,52 @@ type Filter = "all" | "owned" | "needed";
 export default function CardGrid({
   setId,
   cards,
-  initialOwnedIds,
+  initialOwnedKeys,
 }: {
   setId: string;
   cards: TcgdexCard[];
-  initialOwnedIds: string[];
+  initialOwnedKeys: string[];
 }) {
-  const [ownedIds, setOwnedIds] = useState(new Set(initialOwnedIds));
+  const [ownedKeys, setOwnedKeys] = useState(new Set(initialOwnedKeys));
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
 
+  const totalVariants = useMemo(
+    () => cards.reduce((sum, card) => sum + variantsOf(card).length, 0),
+    [cards]
+  );
+
+  function isCardComplete(card: TcgdexCard) {
+    return variantsOf(card).every((v) => ownedKeys.has(ownedKey(card.id, v)));
+  }
+
   const filteredCards = useMemo(() => {
     return cards.filter((card) => {
-      const isOwned = ownedIds.has(card.id);
-      if (filter === "owned" && !isOwned) return false;
-      if (filter === "needed" && isOwned) return false;
+      if (filter === "owned" && !isCardComplete(card)) return false;
+      if (filter === "needed" && isCardComplete(card)) return false;
       if (query && !card.name.toLowerCase().includes(query.toLowerCase()))
         return false;
       return true;
     });
-  }, [cards, ownedIds, filter, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, ownedKeys, filter, query]);
 
-  async function toggleCard(card: TcgdexCard) {
-    const isOwned = ownedIds.has(card.id);
-    const next = new Set(ownedIds);
+  async function toggleVariant(card: TcgdexCard, variant: VariantKey) {
+    const key = ownedKey(card.id, variant);
+    const isOwned = ownedKeys.has(key);
+    const next = new Set(ownedKeys);
     if (isOwned) {
-      next.delete(card.id);
+      next.delete(key);
     } else {
-      next.add(card.id);
+      next.add(key);
     }
-    setOwnedIds(next);
+    setOwnedKeys(next);
 
     try {
-      await setCardOwned(card.id, setId, !isOwned);
+      await setVariantOwned(card.id, setId, variant, !isOwned);
     } catch (err) {
       console.error("Failed to save owned status", err);
-      setOwnedIds(ownedIds);
+      setOwnedKeys(ownedKeys);
     }
   }
 
@@ -76,7 +87,8 @@ export default function CardGrid({
       </div>
 
       <div className="text-sm text-slate-400 mb-3">
-        {ownedIds.size} / {cards.length} owned
+        {ownedKeys.size} / {totalVariants} variants owned &middot;{" "}
+        {cards.filter(isCardComplete).length} / {cards.length} cards complete
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -84,8 +96,12 @@ export default function CardGrid({
           <CardTile
             key={card.id}
             card={card}
-            owned={ownedIds.has(card.id)}
-            onToggle={() => toggleCard(card)}
+            ownedVariants={
+              new Set(
+                variantsOf(card).filter((v) => ownedKeys.has(ownedKey(card.id, v)))
+              )
+            }
+            onToggleVariant={(variant) => toggleVariant(card, variant)}
           />
         ))}
       </div>
