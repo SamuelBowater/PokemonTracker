@@ -86,7 +86,20 @@ async function getCardVariants(cardId: string): Promise<CardVariants> {
     throw new Error(`Failed to fetch card ${cardId}: ${res.status}`);
   }
   const data = await res.json();
-  return data.variants;
+  return normalizeVariants(data.variants);
+}
+
+/**
+ * TCGdex's crowdsourced variant data lags for newer sets - e.g. Chaos Rising
+ * (me04) has `reverse: false` on plain commons that do have a reverse holo
+ * print in reality. Every normal-print card in this era of the TCG also gets
+ * a reverse holo print, so backfill it when TCGdex hasn't caught up.
+ */
+function normalizeVariants(variants: CardVariants): CardVariants {
+  return {
+    ...variants,
+    reverse: variants.reverse || variants.normal,
+  };
 }
 
 export async function getSet(setId: string): Promise<TcgdexSet> {
