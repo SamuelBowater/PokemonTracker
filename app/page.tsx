@@ -1,88 +1,48 @@
 import Link from "next/link";
-import { TRACKED_SETS } from "@/lib/sets";
-import { getSet, formatGBP, variantsOf } from "@/lib/tcgdex";
-import { getOwnedVariantQuantities } from "@/lib/owned";
-import { ownedKey } from "@/lib/ownedKey";
+import { SERIES, TRACKED_SETS, setsInSeries } from "@/lib/sets";
+import { formatGBP } from "@/lib/tcgdex";
+import { getSetSummaries, sumStats } from "@/lib/collectionStats";
 
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const summaries = await Promise.all(
-    TRACKED_SETS.map(async ({ id, name }) => {
-      const [set, ownedQuantities] = await Promise.all([
-        getSet(id),
-        getOwnedVariantQuantities(id),
-      ]);
-      const total = set.cards.reduce((sum, card) => sum + variantsOf(card).length, 0);
+  const allSummaries = await getSetSummaries(TRACKED_SETS);
+  const grandTotal = sumStats(allSummaries);
 
-      let owned = 0;
-      let value = 0;
-      let remaining = 0;
-      let duplicateValue = 0;
-      for (const card of set.cards) {
-        for (const variant of variantsOf(card)) {
-          const price = card.prices[variant] ?? 0;
-          const qty = ownedQuantities.get(ownedKey(card.id, variant)) ?? 0;
-          if (qty > 0) {
-            owned += 1;
-            value += price * qty;
-            duplicateValue += price * (qty - 1);
-          } else {
-            remaining += price;
-          }
-        }
-      }
-
-      return {
-        id,
-        name,
-        logo: set.logo,
-        total,
-        owned,
-        value,
-        remaining,
-        duplicateValue,
-      };
-    })
-  );
-
-  const grandTotalValue = summaries.reduce((sum, set) => sum + set.value, 0);
-  const grandTotalRemaining = summaries.reduce((sum, set) => sum + set.remaining, 0);
-  const grandTotalDuplicates = summaries.reduce((sum, set) => sum + set.duplicateValue, 0);
+  const seriesStats = SERIES.map((series) => {
+    const setIds = new Set<string>(setsInSeries(series.id).map((s) => s.id));
+    const summaries = allSummaries.filter((s) => setIds.has(s.id));
+    return { ...series, ...sumStats(summaries), setCount: summaries.length };
+  });
 
   return (
     <main className="max-w-md mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-1">My Card Collection</h1>
-      <p className="text-slate-400 mb-1">Mega Evolution series</p>
+      <p className="text-slate-400 mb-1">Pok&eacute;mon TCG</p>
       <p className="text-emerald-400 font-medium">
-        Total collection value: {formatGBP(grandTotalValue)}
+        Total collection value: {formatGBP(grandTotal.value)}
       </p>
       <p className="text-amber-400 font-medium">
-        Remaining to finish all sets: {formatGBP(grandTotalRemaining)}
+        Remaining to finish all sets: {formatGBP(grandTotal.remaining)}
       </p>
       <p className="text-sky-400 font-medium mb-6">
-        Duplicates (tradeable): {formatGBP(grandTotalDuplicates)}
+        Duplicates (tradeable): {formatGBP(grandTotal.duplicateValue)}
       </p>
 
       <div className="flex flex-col gap-4">
-        {summaries.map((set) => {
-          const pct = set.total ? Math.round((set.owned / set.total) * 100) : 0;
+        {seriesStats.map((series) => {
+          const pct = series.total ? Math.round((series.owned / series.total) * 100) : 0;
           return (
             <Link
-              key={set.id}
-              href={`/set/${set.id}`}
+              key={series.id}
+              href={`/series/${series.id}`}
               className="block rounded-xl bg-slate-900 hover:bg-slate-800 transition-colors p-4 border border-slate-800"
             >
-              <div className="flex items-center gap-3 mb-3">
-                {set.logo && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`${set.logo}.png`}
-                    alt={set.name}
-                    className="h-8 object-contain"
-                  />
-                )}
-                <span className="font-semibold text-lg">{set.name}</span>
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-semibold text-lg">{series.name}</span>
+                <span className="text-xs text-slate-500">
+                  {series.setCount} set{series.setCount === 1 ? "" : "s"}
+                </span>
               </div>
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                 <div
@@ -91,16 +51,16 @@ export default async function HomePage() {
                 />
               </div>
               <div className="text-sm text-slate-400 mt-1">
-                {set.owned} / {set.total} variants owned ({pct}%)
+                {series.owned} / {series.total} variants owned ({pct}%)
               </div>
               <div className="text-sm text-emerald-400 mt-0.5">
-                Value: {formatGBP(set.value)}
+                Value: {formatGBP(series.value)}
               </div>
               <div className="text-sm text-amber-400 mt-0.5">
-                Remaining: {formatGBP(set.remaining)}
+                Remaining: {formatGBP(series.remaining)}
               </div>
               <div className="text-sm text-sky-400 mt-0.5">
-                Duplicates: {formatGBP(set.duplicateValue)}
+                Duplicates: {formatGBP(series.duplicateValue)}
               </div>
             </Link>
           );

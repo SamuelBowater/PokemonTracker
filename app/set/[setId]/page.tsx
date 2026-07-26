@@ -22,8 +22,11 @@ export default async function SetPage({
 
   return (
     <main className="max-w-md mx-auto px-4 py-6">
-      <Link href="/" className="text-slate-400 text-sm mb-2 inline-block">
-        &larr; All sets
+      <Link
+        href={`/series/${meta.series}`}
+        className="text-slate-400 text-sm mb-2 inline-block"
+      >
+        &larr; Back
       </Link>
       <h1 className="text-xl font-bold mb-4">{meta.name}</h1>
       <CardGrid
