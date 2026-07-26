@@ -16,10 +16,14 @@ export default async function HomePage() {
       const total = set.cards.reduce((sum, card) => sum + variantsOf(card).length, 0);
 
       let value = 0;
+      let remaining = 0;
       for (const card of set.cards) {
         for (const variant of variantsOf(card)) {
+          const price = card.prices[variant] ?? 0;
           if (ownedKeys.has(ownedKey(card.id, variant))) {
-            value += card.prices[variant] ?? 0;
+            value += price;
+          } else {
+            remaining += price;
           }
         }
       }
@@ -31,18 +35,23 @@ export default async function HomePage() {
         total,
         owned: ownedKeys.size,
         value,
+        remaining,
       };
     })
   );
 
   const grandTotalValue = summaries.reduce((sum, set) => sum + set.value, 0);
+  const grandTotalRemaining = summaries.reduce((sum, set) => sum + set.remaining, 0);
 
   return (
     <main className="max-w-md mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-1">My Card Collection</h1>
       <p className="text-slate-400 mb-1">Mega Evolution series</p>
-      <p className="text-emerald-400 font-medium mb-6">
+      <p className="text-emerald-400 font-medium">
         Total collection value: {formatGBP(grandTotalValue)}
+      </p>
+      <p className="text-amber-400 font-medium mb-6">
+        Remaining to finish all sets: {formatGBP(grandTotalRemaining)}
       </p>
 
       <div className="flex flex-col gap-4">
@@ -75,7 +84,10 @@ export default async function HomePage() {
                 {set.owned} / {set.total} variants owned ({pct}%)
               </div>
               <div className="text-sm text-emerald-400 mt-0.5">
-                {formatGBP(set.value)}
+                Value: {formatGBP(set.value)}
+              </div>
+              <div className="text-sm text-amber-400 mt-0.5">
+                Remaining: {formatGBP(set.remaining)}
               </div>
             </Link>
           );

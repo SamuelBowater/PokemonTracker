@@ -26,16 +26,20 @@ export default function CardGrid({
     [cards]
   );
 
-  const ownedValue = useMemo(() => {
-    let total = 0;
+  const { ownedValue, remainingValue } = useMemo(() => {
+    let owned = 0;
+    let remaining = 0;
     for (const card of cards) {
       for (const variant of variantsOf(card)) {
+        const price = card.prices[variant] ?? 0;
         if (ownedKeys.has(ownedKey(card.id, variant))) {
-          total += card.prices[variant] ?? 0;
+          owned += price;
+        } else {
+          remaining += price;
         }
       }
     }
-    return total;
+    return { ownedValue: owned, remainingValue: remaining };
   }, [cards, ownedKeys]);
 
   function isCardComplete(card: TcgdexCard) {
@@ -103,6 +107,9 @@ export default function CardGrid({
         {cards.filter(isCardComplete).length} / {cards.length} cards complete
         <div className="text-emerald-400 font-medium mt-0.5">
           Collection value: {formatGBP(ownedValue)}
+        </div>
+        <div className="text-amber-400 font-medium mt-0.5">
+          Remaining to complete: {formatGBP(remainingValue)}
         </div>
       </div>
 
