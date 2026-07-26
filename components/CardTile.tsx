@@ -5,6 +5,7 @@ import {
   VariantKey,
   VARIANT_LABELS,
   cardImageUrl,
+  formatGBP,
   variantsOf,
 } from "@/lib/tcgdex";
 
@@ -46,17 +47,21 @@ export default function CardTile({
       <div className="flex flex-wrap gap-1 px-1.5 pb-1.5">
         {variants.map((variant) => {
           const isOwned = ownedVariants.has(variant);
+          const price = card.prices[variant];
           return (
             <button
               key={variant}
               onClick={() => onToggleVariant(variant)}
-              className={`text-[10px] leading-none px-1.5 py-1 rounded-full border ${
+              className={`flex flex-col items-center leading-none px-1.5 py-1 rounded-full border ${
                 isOwned
                   ? "bg-emerald-500 border-emerald-500 text-slate-950"
                   : "border-slate-700 text-slate-400"
               }`}
             >
-              {VARIANT_LABELS[variant]}
+              <span className="text-[10px]">{VARIANT_LABELS[variant]}</span>
+              {price != null && (
+                <span className="text-[9px] opacity-75">{formatGBP(price)}</span>
+              )}
             </button>
           );
         })}

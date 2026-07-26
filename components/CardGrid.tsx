@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TcgdexCard, VariantKey, variantsOf } from "@/lib/tcgdex";
+import { TcgdexCard, VariantKey, formatGBP, variantsOf } from "@/lib/tcgdex";
 import { ownedKey } from "@/lib/ownedKey";
 import { setVariantOwned } from "@/app/actions";
 import CardTile from "./CardTile";
@@ -25,6 +25,18 @@ export default function CardGrid({
     () => cards.reduce((sum, card) => sum + variantsOf(card).length, 0),
     [cards]
   );
+
+  const ownedValue = useMemo(() => {
+    let total = 0;
+    for (const card of cards) {
+      for (const variant of variantsOf(card)) {
+        if (ownedKeys.has(ownedKey(card.id, variant))) {
+          total += card.prices[variant] ?? 0;
+        }
+      }
+    }
+    return total;
+  }, [cards, ownedKeys]);
 
   function isCardComplete(card: TcgdexCard) {
     return variantsOf(card).every((v) => ownedKeys.has(ownedKey(card.id, v)));
@@ -89,6 +101,9 @@ export default function CardGrid({
       <div className="text-sm text-slate-400 mb-3">
         {ownedKeys.size} / {totalVariants} variants owned &middot;{" "}
         {cards.filter(isCardComplete).length} / {cards.length} cards complete
+        <div className="text-emerald-400 font-medium mt-0.5">
+          Collection value: {formatGBP(ownedValue)}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">

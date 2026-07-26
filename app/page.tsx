@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { TRACKED_SETS } from "@/lib/sets";
-import { getSet, variantsOf } from "@/lib/tcgdex";
+import { getSet, formatGBP, variantsOf } from "@/lib/tcgdex";
 import { getOwnedVariantKeys } from "@/lib/owned";
+import { ownedKey } from "@/lib/ownedKey";
 
 export const revalidate = 0;
 
@@ -13,20 +14,36 @@ export default async function HomePage() {
         getOwnedVariantKeys(id),
       ]);
       const total = set.cards.reduce((sum, card) => sum + variantsOf(card).length, 0);
+
+      let value = 0;
+      for (const card of set.cards) {
+        for (const variant of variantsOf(card)) {
+          if (ownedKeys.has(ownedKey(card.id, variant))) {
+            value += card.prices[variant] ?? 0;
+          }
+        }
+      }
+
       return {
         id,
         name,
         logo: set.logo,
         total,
         owned: ownedKeys.size,
+        value,
       };
     })
   );
 
+  const grandTotalValue = summaries.reduce((sum, set) => sum + set.value, 0);
+
   return (
     <main className="max-w-md mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-1">My Card Collection</h1>
-      <p className="text-slate-400 mb-6">Mega Evolution series</p>
+      <p className="text-slate-400 mb-1">Mega Evolution series</p>
+      <p className="text-emerald-400 font-medium mb-6">
+        Total collection value: {formatGBP(grandTotalValue)}
+      </p>
 
       <div className="flex flex-col gap-4">
         {summaries.map((set) => {
@@ -56,6 +73,9 @@ export default async function HomePage() {
               </div>
               <div className="text-sm text-slate-400 mt-1">
                 {set.owned} / {set.total} variants owned ({pct}%)
+              </div>
+              <div className="text-sm text-emerald-400 mt-0.5">
+                {formatGBP(set.value)}
               </div>
             </Link>
           );
