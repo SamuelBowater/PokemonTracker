@@ -34,3 +34,7 @@ Add an entry to `TRACKED_SETS` in [`lib/sets.ts`](lib/sets.ts) with the TCGdex s
 ## Upgrading an existing database for variant tracking
 
 If you set up the database before masterset (variant) tracking was added, run [`db/migrations/001_add_variants.sql`](db/migrations/001_add_variants.sql) once in the Neon SQL editor to add the `variant` column to `owned_cards`. Any cards already marked owned will carry over as their "normal" variant.
+
+## Upgrading an existing database for duplicate tracking
+
+If you set up the database before duplicate/quantity tracking was added, run [`db/migrations/002_add_quantity.sql`](db/migrations/002_add_quantity.sql) once in the Neon SQL editor to add the `quantity` column to `owned_cards`. Existing owned cards default to quantity 1.

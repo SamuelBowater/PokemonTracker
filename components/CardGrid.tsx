@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { TcgdexCard, VariantKey, formatGBP, variantsOf } from "@/lib/tcgdex";
 import { ownedKey } from "@/lib/ownedKey";
-import { setVariantOwned } from "@/app/actions";
+import { setVariantOwned, setVariantQuantity } from "@/app/actions";
 import CardTile from "./CardTile";
 
 type Filter = "all" | "owned" | "needed";
@@ -12,40 +12,59 @@ export default function CardGrid({
   setId,
   setName,
   cards,
-  initialOwnedKeys,
+  initialQuantities,
 }: {
   setId: string;
   setName: string;
   cards: TcgdexCard[];
-  initialOwnedKeys: string[];
+  initialQuantities: [string, number][];
 }) {
-  const [ownedKeys, setOwnedKeys] = useState(new Set(initialOwnedKeys));
+  const [quantities, setQuantities] = useState(new Map(initialQuantities));
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+
+  function quantityOf(cardId: string, variant: VariantKey) {
+    return quantities.get(ownedKey(cardId, variant)) ?? 0;
+  }
 
   const totalVariants = useMemo(
     () => cards.reduce((sum, card) => sum + variantsOf(card).length, 0),
     [cards]
   );
 
-  const { ownedValue, remainingValue } = useMemo(() => {
+  const ownedVariantCount = useMemo(() => {
+    let count = 0;
+    for (const card of cards) {
+      for (const variant of variantsOf(card)) {
+        if (quantityOf(card.id, variant) > 0) count++;
+      }
+    }
+    return count;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, quantities]);
+
+  const { ownedValue, remainingValue, duplicateValue } = useMemo(() => {
     let owned = 0;
     let remaining = 0;
+    let duplicate = 0;
     for (const card of cards) {
       for (const variant of variantsOf(card)) {
         const price = card.prices[variant] ?? 0;
-        if (ownedKeys.has(ownedKey(card.id, variant))) {
-          owned += price;
+        const qty = quantityOf(card.id, variant);
+        if (qty > 0) {
+          owned += price * qty;
+          duplicate += price * (qty - 1);
         } else {
           remaining += price;
         }
       }
     }
-    return { ownedValue: owned, remainingValue: remaining };
-  }, [cards, ownedKeys]);
+    return { ownedValue: owned, remainingValue: remaining, duplicateValue: duplicate };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, quantities]);
 
   function isCardComplete(card: TcgdexCard) {
-    return variantsOf(card).every((v) => ownedKeys.has(ownedKey(card.id, v)));
+    return variantsOf(card).every((v) => quantityOf(card.id, v) > 0);
   }
 
   const filteredCards = useMemo(() => {
@@ -57,25 +76,39 @@ export default function CardGrid({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, ownedKeys, filter, query]);
+  }, [cards, quantities, filter, query]);
 
-  async function toggleVariant(card: TcgdexCard, variant: VariantKey) {
+  async function applyQuantity(card: TcgdexCard, variant: VariantKey, quantity: number) {
     const key = ownedKey(card.id, variant);
-    const isOwned = ownedKeys.has(key);
-    const next = new Set(ownedKeys);
-    if (isOwned) {
-      next.delete(key);
+    const previous = quantities;
+    const next = new Map(quantities);
+    if (quantity > 0) {
+      next.set(key, quantity);
     } else {
-      next.add(key);
+      next.delete(key);
     }
-    setOwnedKeys(next);
+    setQuantities(next);
 
     try {
-      await setVariantOwned(card.id, setId, variant, !isOwned);
+      if (quantity <= 1) {
+        await setVariantOwned(card.id, setId, variant, quantity === 1);
+      } else {
+        await setVariantQuantity(card.id, setId, variant, quantity);
+      }
     } catch (err) {
       console.error("Failed to save owned status", err);
-      setOwnedKeys(ownedKeys);
+      setQuantities(previous);
     }
+  }
+
+  function toggleVariant(card: TcgdexCard, variant: VariantKey) {
+    const isOwned = quantityOf(card.id, variant) > 0;
+    applyQuantity(card, variant, isOwned ? 0 : 1);
+  }
+
+  function adjustQuantity(card: TcgdexCard, variant: VariantKey, delta: number) {
+    const next = Math.max(0, quantityOf(card.id, variant) + delta);
+    applyQuantity(card, variant, next);
   }
 
   return (
@@ -105,13 +138,16 @@ export default function CardGrid({
       </div>
 
       <div className="text-sm text-slate-400 mb-3">
-        {ownedKeys.size} / {totalVariants} variants owned &middot;{" "}
+        {ownedVariantCount} / {totalVariants} variants owned &middot;{" "}
         {cards.filter(isCardComplete).length} / {cards.length} cards complete
         <div className="text-emerald-400 font-medium mt-0.5">
           Collection value: {formatGBP(ownedValue)}
         </div>
         <div className="text-amber-400 font-medium mt-0.5">
           Remaining to complete: {formatGBP(remainingValue)}
+        </div>
+        <div className="text-sky-400 font-medium mt-0.5">
+          Duplicates (tradeable): {formatGBP(duplicateValue)}
         </div>
       </div>
 
@@ -121,12 +157,11 @@ export default function CardGrid({
             key={card.id}
             card={card}
             setName={setName}
-            ownedVariants={
-              new Set(
-                variantsOf(card).filter((v) => ownedKeys.has(ownedKey(card.id, v)))
-              )
+            quantities={
+              new Map(variantsOf(card).map((v) => [v, quantityOf(card.id, v)]))
             }
             onToggleVariant={(variant) => toggleVariant(card, variant)}
+            onAdjustQuantity={(variant, delta) => adjustQuantity(card, variant, delta)}
           />
         ))}
       </div>

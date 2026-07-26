@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TRACKED_SETS } from "@/lib/sets";
 import { getSet, formatGBP, variantsOf } from "@/lib/tcgdex";
-import { getOwnedVariantKeys } from "@/lib/owned";
+import { getOwnedVariantQuantities } from "@/lib/owned";
 import { ownedKey } from "@/lib/ownedKey";
 
 export const revalidate = 0;
@@ -9,19 +9,24 @@ export const revalidate = 0;
 export default async function HomePage() {
   const summaries = await Promise.all(
     TRACKED_SETS.map(async ({ id, name }) => {
-      const [set, ownedKeys] = await Promise.all([
+      const [set, ownedQuantities] = await Promise.all([
         getSet(id),
-        getOwnedVariantKeys(id),
+        getOwnedVariantQuantities(id),
       ]);
       const total = set.cards.reduce((sum, card) => sum + variantsOf(card).length, 0);
 
+      let owned = 0;
       let value = 0;
       let remaining = 0;
+      let duplicateValue = 0;
       for (const card of set.cards) {
         for (const variant of variantsOf(card)) {
           const price = card.prices[variant] ?? 0;
-          if (ownedKeys.has(ownedKey(card.id, variant))) {
-            value += price;
+          const qty = ownedQuantities.get(ownedKey(card.id, variant)) ?? 0;
+          if (qty > 0) {
+            owned += 1;
+            value += price * qty;
+            duplicateValue += price * (qty - 1);
           } else {
             remaining += price;
           }
@@ -33,15 +38,17 @@ export default async function HomePage() {
         name,
         logo: set.logo,
         total,
-        owned: ownedKeys.size,
+        owned,
         value,
         remaining,
+        duplicateValue,
       };
     })
   );
 
   const grandTotalValue = summaries.reduce((sum, set) => sum + set.value, 0);
   const grandTotalRemaining = summaries.reduce((sum, set) => sum + set.remaining, 0);
+  const grandTotalDuplicates = summaries.reduce((sum, set) => sum + set.duplicateValue, 0);
 
   return (
     <main className="max-w-md mx-auto px-4 py-8">
@@ -50,8 +57,11 @@ export default async function HomePage() {
       <p className="text-emerald-400 font-medium">
         Total collection value: {formatGBP(grandTotalValue)}
       </p>
-      <p className="text-amber-400 font-medium mb-6">
+      <p className="text-amber-400 font-medium">
         Remaining to finish all sets: {formatGBP(grandTotalRemaining)}
+      </p>
+      <p className="text-sky-400 font-medium mb-6">
+        Duplicates (tradeable): {formatGBP(grandTotalDuplicates)}
       </p>
 
       <div className="flex flex-col gap-4">
@@ -88,6 +98,9 @@ export default async function HomePage() {
               </div>
               <div className="text-sm text-amber-400 mt-0.5">
                 Remaining: {formatGBP(set.remaining)}
+              </div>
+              <div className="text-sm text-sky-400 mt-0.5">
+                Duplicates: {formatGBP(set.duplicateValue)}
               </div>
             </Link>
           );

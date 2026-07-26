@@ -13,17 +13,19 @@ import {
 export default function CardTile({
   card,
   setName,
-  ownedVariants,
+  quantities,
   onToggleVariant,
+  onAdjustQuantity,
 }: {
   card: TcgdexCard;
   setName: string;
-  ownedVariants: Set<VariantKey>;
+  quantities: Map<VariantKey, number>;
   onToggleVariant: (variant: VariantKey) => void;
+  onAdjustQuantity: (variant: VariantKey, delta: number) => void;
 }) {
   const imageUrl = cardImageUrl(card, "low");
   const variants = variantsOf(card);
-  const ownedCount = variants.filter((v) => ownedVariants.has(v)).length;
+  const ownedCount = variants.filter((v) => (quantities.get(v) ?? 0) > 0).length;
   const fullyOwned = ownedCount === variants.length;
   const noneOwned = ownedCount === 0;
 
@@ -49,7 +51,8 @@ export default function CardTile({
 
       <div className="flex flex-wrap gap-1 px-1.5 pb-1.5">
         {variants.map((variant) => {
-          const isOwned = ownedVariants.has(variant);
+          const quantity = quantities.get(variant) ?? 0;
+          const isOwned = quantity > 0;
           const price = card.prices[variant];
           return (
             <div key={variant} className="flex items-stretch gap-0.5">
@@ -61,12 +64,32 @@ export default function CardTile({
                     : "border-slate-700 text-slate-400"
                 }`}
               >
-                <span className="text-[10px]">{VARIANT_LABELS[variant]}</span>
+                <span className="text-[10px]">
+                  {VARIANT_LABELS[variant]}
+                  {quantity > 1 && ` ×${quantity}`}
+                </span>
                 {price != null && (
                   <span className="text-[9px] opacity-75">{formatGBP(price)}</span>
                 )}
               </button>
-              {!isOwned && (
+              {isOwned ? (
+                <div className="flex flex-col justify-between">
+                  <button
+                    onClick={() => onAdjustQuantity(variant, 1)}
+                    title="Add a duplicate copy"
+                    className="flex-1 flex items-center justify-center w-4 rounded-t border border-slate-700 text-[9px] leading-none text-slate-400 hover:text-emerald-400 hover:border-emerald-400"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={() => onAdjustQuantity(variant, -1)}
+                    title="Remove a copy"
+                    className="flex-1 flex items-center justify-center w-4 rounded-b border border-t-0 border-slate-700 text-[9px] leading-none text-slate-400 hover:text-red-400 hover:border-red-400"
+                  >
+                    &minus;
+                  </button>
+                </div>
+              ) : (
                 <a
                   href={ebayUkSearchUrl(card, variant, setName)}
                   target="_blank"
