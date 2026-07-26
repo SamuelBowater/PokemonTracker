@@ -60,6 +60,25 @@ export function variantsOf(card: TcgdexCard): VariantKey[] {
   );
 }
 
+const VARIANT_SEARCH_TERMS: Record<VariantKey, string> = {
+  normal: "",
+  reverse: "Reverse Holo",
+  holo: "Holo",
+  firstEdition: "1st Edition",
+};
+
+/** Search link for a missing card/variant on eBay UK, to help fill the gap. */
+export function ebayUkSearchUrl(
+  card: TcgdexCard,
+  variant: VariantKey,
+  setName: string
+): string {
+  const query = [card.name, card.localId, setName, VARIANT_SEARCH_TERMS[variant], "Pokemon"]
+    .filter(Boolean)
+    .join(" ");
+  return `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(query)}`;
+}
+
 /** Runs async tasks with a bounded number in flight, to avoid hammering the API. */
 async function mapWithConcurrency<T, R>(
   items: T[],

@@ -5,16 +5,19 @@ import {
   VariantKey,
   VARIANT_LABELS,
   cardImageUrl,
+  ebayUkSearchUrl,
   formatGBP,
   variantsOf,
 } from "@/lib/tcgdex";
 
 export default function CardTile({
   card,
+  setName,
   ownedVariants,
   onToggleVariant,
 }: {
   card: TcgdexCard;
+  setName: string;
   ownedVariants: Set<VariantKey>;
   onToggleVariant: (variant: VariantKey) => void;
 }) {
@@ -49,20 +52,33 @@ export default function CardTile({
           const isOwned = ownedVariants.has(variant);
           const price = card.prices[variant];
           return (
-            <button
-              key={variant}
-              onClick={() => onToggleVariant(variant)}
-              className={`flex flex-col items-center leading-none px-1.5 py-1 rounded-full border ${
-                isOwned
-                  ? "bg-emerald-500 border-emerald-500 text-slate-950"
-                  : "border-slate-700 text-slate-400"
-              }`}
-            >
-              <span className="text-[10px]">{VARIANT_LABELS[variant]}</span>
-              {price != null && (
-                <span className="text-[9px] opacity-75">{formatGBP(price)}</span>
+            <div key={variant} className="flex items-stretch gap-0.5">
+              <button
+                onClick={() => onToggleVariant(variant)}
+                className={`flex flex-col items-center leading-none px-1.5 py-1 rounded-full border ${
+                  isOwned
+                    ? "bg-emerald-500 border-emerald-500 text-slate-950"
+                    : "border-slate-700 text-slate-400"
+                }`}
+              >
+                <span className="text-[10px]">{VARIANT_LABELS[variant]}</span>
+                {price != null && (
+                  <span className="text-[9px] opacity-75">{formatGBP(price)}</span>
+                )}
+              </button>
+              {!isOwned && (
+                <a
+                  href={ebayUkSearchUrl(card, variant, setName)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={`Search eBay UK for ${card.name} (${VARIANT_LABELS[variant]})`}
+                  className="flex items-center justify-center w-5 rounded-full border border-slate-700 text-[10px] text-slate-400 hover:text-emerald-400 hover:border-emerald-400"
+                >
+                  🛒
+                </a>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

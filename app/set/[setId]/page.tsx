@@ -28,6 +28,7 @@ export default async function SetPage({
       <h1 className="text-xl font-bold mb-4">{meta.name}</h1>
       <CardGrid
         setId={params.setId}
+        setName={meta.name}
         cards={set.cards}
         initialOwnedKeys={Array.from(ownedKeys)}
       />

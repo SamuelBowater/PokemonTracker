@@ -10,10 +10,12 @@ type Filter = "all" | "owned" | "needed";
 
 export default function CardGrid({
   setId,
+  setName,
   cards,
   initialOwnedKeys,
 }: {
   setId: string;
+  setName: string;
   cards: TcgdexCard[];
   initialOwnedKeys: string[];
 }) {
@@ -118,6 +120,7 @@ export default function CardGrid({
           <CardTile
             key={card.id}
             card={card}
+            setName={setName}
             ownedVariants={
               new Set(
                 variantsOf(card).filter((v) => ownedKeys.has(ownedKey(card.id, v)))
