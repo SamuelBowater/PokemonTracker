@@ -182,19 +182,35 @@ async function getCardDetail(
     throw new Error(`Failed to fetch card ${cardId}: ${res.status}`);
   }
   const data = await res.json();
-  return { variants: normalizeVariants(data.variants), pricing: data.pricing };
+  return {
+    variants: normalizeVariants(data.variants, data.rarity),
+    pricing: data.pricing,
+  };
 }
 
+/** Rarities where a card only ever gets a single holo-exclusive print (ex, secret rares, etc). */
+const HOLO_EXCLUSIVE_RARITIES = new Set(["Common", "Uncommon", "Rare"]);
+
 /**
- * TCGdex's crowdsourced variant data lags for newer sets - e.g. Chaos Rising
- * (me04) has `reverse: false` on plain commons that do have a reverse holo
- * print in reality. Every normal-print card in this era of the TCG also gets
- * a reverse holo print, so backfill it when TCGdex hasn't caught up.
+ * TCGdex's crowdsourced variant data is inconsistent for these newer sets:
+ *  - Plain commons/uncommons are sometimes missing `reverse: true`, even
+ *    though every normal print in this TCG era also gets a reverse holo
+ *    print (e.g. Chaos Rising's Weedle).
+ *  - Plain "Rare" cards are sometimes wrongly flagged `normal: true`
+ *    alongside `holo: true` - in reality a Rare (non-ex) card in this era is
+ *    always holo, with no separate non-holo print (e.g. Perfect Order's
+ *    Dewgong/Aurorus only really exist as Holo + Reverse, not Normal too).
+ * ex / Double rare / Special illustration rare / etc are genuinely
+ * single-print holo-exclusive cards, so their flags are trusted as-is.
  */
-function normalizeVariants(variants: CardVariants): CardVariants {
+function normalizeVariants(variants: CardVariants, rarity: string): CardVariants {
+  if (!HOLO_EXCLUSIVE_RARITIES.has(rarity)) {
+    return variants;
+  }
   return {
     ...variants,
-    reverse: variants.reverse || variants.normal,
+    normal: variants.holo ? false : variants.normal,
+    reverse: true,
   };
 }
 
